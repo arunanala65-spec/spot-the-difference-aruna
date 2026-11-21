@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Twin Lanterns — Spot the Difference</title>
+<style>
+  :root {
+    --ink: #fdf3d8;
+    --ink-dim: #cbb98f;
+    --panel: #241a3e;
+    --panel-2: #2e2350;
+    --gold: #f7c948;
+    --green: #7ee081;
+    --red: #ff6b6b;
+    --accent: #e4572e;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: linear-gradient(180deg, #171233 0%, #241a3e 55%, #1a1030 100%);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  #app { display: flex; flex-direction: column; height: 100vh; max-width: 1280px; margin: 0 auto; padding: 10px 14px 12px; }
+
+  /* ---- HUD ---- */
+  header {
+    display: flex; align-items: center; gap: 18px;
+    background: var(--panel); border: 1px solid #4a3a72; border-radius: 14px;
+    padding: 8px 16px; box-shadow: 0 4px 18px rgba(0,0,0,.35);
+  }
+  .brand h1 { margin: 0; font-size: 22px; letter-spacing: .5px; color: var(--gold); font-family: Georgia, serif; }
+  .brand p { margin: 1px 0 0; font-size: 11px; color: var(--ink-dim); }
+  .counter {
+    display: flex; align-items: baseline; gap: 8px; margin-left: auto;
+    background: var(--panel-2); border: 1px solid #5a4a86; border-radius: 10px; padding: 6px 14px;
+  }
+  .counter .label { font-size: 12px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 1px; }
+  .counter .big { font-size: 26px; font-weight: 800; line-height: 1; }
+  .counter .remain { font-size: 13px; color: var(--gold); font-weight: 700; }
+  .counter.done { border-color: var(--green); box-shadow: 0 0 0 2px rgba(126,224,129,.35); }
+  .stat { text-align: center; min-width: 64px; }
+  .stat .label { font-size: 11px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 1px; }
+  .stat .value { font-size: 22px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  #timer.urgent { color: var(--red); animation: pulse .5s infinite alternate; }
+  #timer.empty { color: var(--red); }
+  @keyframes pulse { from { opacity: 1; } to { opacity: .45; } }
+  .hud-btn {
+    background: #3a2c5e; color: var(--ink); border: 1px solid #5a4a86; border-radius: 9px;
+    padding: 8px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .hud-btn:hover:not(:disabled) { background: #4a3a72; }
+  .hud-btn:disabled { opacity: .45; cursor: default; }
+  #message {
+    min-height: 20px; text-align: center; font-size: 14px; margin: 6px 0 2px; color: var(--ink-dim);
+  }
+  #message.good { color: var(--green); font-weight: 700; }
+  #message.bad { color: var(--red); font-weight: 700; }
+  #message.info { color: var(--gold); }
+
+  /* ---- Panels ---- */
+  #panels { display: flex; gap: 14px; flex: 1; min-height: 0; }
+  .panel-wrap {
+    flex: 1; display: flex; flex-direction: column; min-width: 0;
+    background: var(--panel); border: 1px solid #4a3a72; border-radius: 14px; padding: 8px;
+  }
+  .panel-wrap h2 {
+    margin: 0 0 6px; font-size: 13px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--ink-dim); display: flex; justify-content: space-between;
+  }
+  .panel-wrap h2 .dot { color: var(--gold); }
+  .panel-wrap canvas { width: 100%; height: auto; aspect-ratio: 640 / 460; display: block; border-radius: 8px; cursor: crosshair; }
+  #panels.shake { animation: shake .3s; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    50% { transform: translateX(6px); }
+    75% { transform: translateX(-4px); }
+  }
+  footer { text-align: center; font-size: 11px; color: var(--ink-dim); margin-top: 6px; }
+
+  /* ---- Overlay screens ---- */
+  #overlay {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(12, 8, 26, 0.72); z-index: 10; backdrop-filter: blur(2px);
+  }
+  #overlay.visible { display: flex; }
+  #overlay .panel {
+    background: var(--panel); border: 1px solid var(--gold); border-radius: 18px;
+    padding: 28px 36px; max-width: 520px; text-align: center; box-shadow: 0 12px 48px rgba(0,0,0,.6);
+  }
+  #overlay .eyebrow { color: var(--gold); text-transform: uppercase; letter-spacing: 3px; font-size: 12px; font-weight: 700; }
+  #overlay h1 { margin: 8px 0 4px; font-family: Georgia, serif; font-size: 38px; color: var(--ink); }
+  #overlay .tagline { margin: 0 0 12px; font-size: 17px; color: var(--gold); font-style: italic; }
+  #overlay .rules { font-size: 14px; line-height: 1.55; color: var(--ink); }
+  #overlay .keys { font-size: 12.5px; color: var(--ink-dim); }
+  #overlay .stars { font-size: 34px; color: var(--gold); letter-spacing: 6px; margin: 6px 0; }
+  #overlay .result-line { font-size: 15px; }
+  #overlay .levels-note { font-size: 12px; color: var(--ink-dim); margin-top: 14px; }
+  .big-btn {
+    background: var(--accent); color: #fff; border: none; border-radius: 12px;
+    padding: 13px 26px; font-size: 17px; font-weight: 800; cursor: pointer; margin-top: 10px;
+    box-shadow: 0 4px 0 #a83a1d;
+  }
+  .big-btn:hover { background: #ef6a3e; }
+  .big-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #a83a1d; }
+  .ghost-btn {
+    display: block; margin: 10px auto 0; background: transparent; color: var(--ink-dim);
+    border: 1px solid #5a4a86; border-radius: 10px; padding: 8px 16px; font-size: 13px; cursor: pointer;
+  }
+  .ghost-btn:hover { color: var(--ink); }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <h1>🏮 Twin Lanterns</h1>
+      <p id="level-tagline">Spot the Difference — Night Market Festival</p>
+    </div>
+    <div class="counter" id="counter" role="status">
+      <span class="label">Found</span>
+      <span class="big"><span id="counter-found">0</span> / <span id="counter-total">7</span></span>
+      <span class="remain">· <span id="counter-remain">7</span> remain</span>
+    </div>
+    <div class="stat"><div class="label">Time</div><div class="value" id="timer">02:00</div></div>
+    <div class="stat"><div class="label">Score</div><div class="value" id="score">0</div></div>
+    <button class="hud-btn" id="hint-btn" title="Hint (H)">💡 Hint (3)</button>
+    <button class="hud-btn" id="restart-btn" title="Restart level (R)">↻</button>
+    <button class="hud-btn" id="mute-btn" title="Mute (M)">🔊</button>
+  </header>
+  <p id="message" class="message info">Find every difference before the lanterns burn down.</p>
+  <div id="panels">
+    <div class="panel-wrap">
+      <h2><span>◀ Original</span><span class="dot" id="level-name">Level 1 — Lantern Row</span></h2>
+      <canvas id="panel-left" aria-label="Original picture of the night market stall"></canvas>
+    </div>
+    <div class="panel-wrap">
+      <h2><span>Changed ▶</span><span class="dot">Find the differences</span></h2>
+      <canvas id="panel-right" aria-label="Changed picture of the night market stall"></canvas>
+    </div>
+  </div>
+  <footer>Click a difference on either picture &nbsp;·&nbsp; H hint &nbsp;·&nbsp; N next level &nbsp;·&nbsp; R restart &nbsp;·&nbsp; 1 / 2 / 3 jump to a level &nbsp;·&nbsp; Twin Lanterns — original art, drawn in code</footer>
+</div>
+<div id="overlay"></div>
+<p id="status" role="status" aria-live="polite"></p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
